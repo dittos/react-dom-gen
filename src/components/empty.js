@@ -26,7 +26,7 @@ Object.assign(ReactDOMEmptyComponent.prototype, {
 
     var nodeValue = ' react-empty: ' + domID + ' ';
     if (!transaction.renderToStaticMarkup) {
-      transaction.write('<!--' + nodeValue + '-->');
+      context.write('<!--' + nodeValue + '-->');
     }
   },
   receiveComponent: function() {

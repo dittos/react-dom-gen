@@ -28,7 +28,7 @@ describe('ReactServerRendering', () => {
     jest.resetModuleRegistry();
     React = require('react');
     ReactDOM = require('../');
-    ReactMarkupChecksum = require('../ReactMarkupChecksum');
+    ReactMarkupChecksum = require('../checksum');
     // ReactTestUtils = require('ReactTestUtils');
     ReactReconcileTransaction = require('react-dom/lib/ReactReconcileTransaction');
 

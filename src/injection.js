@@ -19,18 +19,19 @@ var EnterLeaveEventPlugin = require('react-dom/lib/EnterLeaveEventPlugin');
 var HTMLDOMPropertyConfig = require('react-dom/lib/HTMLDOMPropertyConfig');
 var ReactComponentBrowserEnvironment =
   require('react-dom/lib/ReactComponentBrowserEnvironment');
-var ReactDOMServerComponent = require('./ReactDOMServerComponent');
 var ReactDOMComponentTree = require('react-dom/lib/ReactDOMComponentTree');
-var ReactDOMServerEmptyComponent = require('./ReactDOMServerEmptyComponent');
 var ReactDOMTreeTraversal = require('react-dom/lib/ReactDOMTreeTraversal');
-var ReactDOMServerTextComponent = require('./ReactDOMServerTextComponent');
-var ReactDefaultBatchingStrategy = require('react-dom/lib/ReactDefaultBatchingStrategy');
+var ReactServerBatchingStrategy = require('react-dom/lib/ReactServerBatchingStrategy');
 var ReactEventListener = require('react-dom/lib/ReactEventListener');
 var ReactInjection = require('react-dom/lib/ReactInjection');
 var ReactReconcileTransaction = require('react-dom/lib/ReactReconcileTransaction');
 var SVGDOMPropertyConfig = require('react-dom/lib/SVGDOMPropertyConfig');
 var SelectEventPlugin = require('react-dom/lib/SelectEventPlugin');
 var SimpleEventPlugin = require('react-dom/lib/SimpleEventPlugin');
+
+var ReactDOMServerComponent = require('./components/generic');
+var ReactDOMServerEmptyComponent = require('./components/empty');
+var ReactDOMServerTextComponent = require('./components/text');
 
 var alreadyInjected = false;
 
@@ -43,16 +44,10 @@ function inject() {
   }
   alreadyInjected = true;
 
-  ReactInjection.EventEmitter.injectReactEventListener(
-    ReactEventListener
-  );
-
   /**
    * Inject modules for resolving DOM hierarchy and plugin ordering.
    */
   ReactInjection.EventPluginHub.injectEventPluginOrder(DefaultEventPluginOrder);
-  ReactInjection.EventPluginUtils.injectComponentTree(ReactDOMComponentTree);
-  ReactInjection.EventPluginUtils.injectTreeTraversal(ReactDOMTreeTraversal);
 
   /**
    * Some important event plugins included by default (without having to require
@@ -88,7 +83,7 @@ function inject() {
     ReactReconcileTransaction
   );
   ReactInjection.Updates.injectBatchingStrategy(
-    ReactDefaultBatchingStrategy
+    ReactServerBatchingStrategy
   );
 
   ReactInjection.Component.injectEnvironment(ReactComponentBrowserEnvironment);

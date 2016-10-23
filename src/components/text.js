@@ -77,7 +77,7 @@ Object.assign(ReactDOMTextComponent.prototype, {
         '<!--' + closingValue + '-->'
       );
     }
-    transaction.write(escapedText);
+    context.write(escapedText);
   },
 
   receiveComponent: function(nextText, transaction) {

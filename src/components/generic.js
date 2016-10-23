@@ -24,7 +24,6 @@ var ReactDOMSelect = require('react-dom/lib/ReactDOMSelect');
 var ReactDOMTextarea = require('react-dom/lib/ReactDOMTextarea');
 var ReactInstrumentation = require('react-dom/lib/ReactInstrumentation');
 var ReactMultiChild = require('react-dom/lib/ReactMultiChild');
-var ReactServerRenderingTransaction = require('./ReactServer2RenderingTransaction');
 
 var emptyFunction = require('fbjs/lib/emptyFunction');
 var escapeTextContentForBrowser = require('react-dom/lib/escapeTextContentForBrowser');
@@ -318,16 +317,16 @@ ReactDOMServerComponent.Mixin = {
 
     var type = this._currentElement.type;
     var tagOpen = this._createOpenTagMarkupAndPutListeners(transaction, props);
-    transaction.write(tagOpen);
-    transaction.enqueueNextWriteHeader('>');
-    var pos = transaction.position;
+    context.write(tagOpen);
+    context.enqueueNextWriteHeader('>');
+    var pos = context.position;
     this._createContentMarkup(transaction, props, context);
-    var isEmpty = pos === transaction.position;
+    var isEmpty = pos === context.position;
     if (isEmpty && omittedCloseTags[this._tag]) {
-      transaction.resetNextWriteHeader();
-      transaction.write('/>');
+      context.resetNextWriteHeader();
+      context.write('/>');
     } else {
-      transaction.write('</' + type + '>');
+      context.write('</' + type + '>');
     }
   },
 
@@ -416,10 +415,10 @@ ReactDOMServerComponent.Mixin = {
       // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
       // See: Parsing of "textarea" "listing" and "pre" elements
       //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
-      if (write)transaction.write('\n'+ret);
+      if (write)context.write('\n'+ret);
       return '\n' + ret;
     } else {
-      if (ret&&write)transaction.write(ret);
+      if (ret&&write)context.write(ret);
       return ret;
     }
   },
