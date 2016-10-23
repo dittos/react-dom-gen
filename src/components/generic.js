@@ -315,22 +315,20 @@ ReactDOMServerComponent.Mixin = {
         validateDOMNesting.updatedAncestorInfo(parentInfo, this._tag, this);
     }
 
-    var type = this._currentElement.type;
-    var tagOpen = this._createOpenTagMarkupAndPutListeners(transaction, props);
-    context.write(tagOpen);
-    context.enqueueNextWriteHeader('>');
-    var pos = context.position;
+    var tagOpen = this._createOpenTagMarkup(transaction, props);
+    const tagContext = context.writeIncompleteOpenTag(
+      tagOpen,
+      newlineEatingTags[this._tag],
+    );
     this._createContentMarkup(transaction, props, context);
-    var isEmpty = pos === context.position;
-    if (isEmpty && omittedCloseTags[this._tag]) {
-      context.resetNextWriteHeader();
-      context.write('/>');
-    } else {
-      context.write('</' + type + '>');
-    }
+    context.completeTag(
+      this._currentElement.type,
+      omittedCloseTags[this._tag],
+      tagContext,
+    );
   },
 
-  _createOpenTagMarkupAndPutListeners: function(transaction, props) {
+  _createOpenTagMarkup: function(transaction, props) {
     var ret = '<' + this._currentElement.type;
 
     for (var propKey in props) {
@@ -375,14 +373,11 @@ ReactDOMServerComponent.Mixin = {
   },
 
   _createContentMarkup: function(transaction, props, context) {
-    var ret = '';
-    var write = true;
-
     // Intentional use of != to avoid catching zero/false.
     var innerHTML = props.dangerouslySetInnerHTML;
     if (innerHTML != null) {
       if (innerHTML.__html != null) {
-        ret = innerHTML.__html;
+        context.write(innerHTML.__html);
       }
     } else {
       var contentToUse =
@@ -390,7 +385,7 @@ ReactDOMServerComponent.Mixin = {
       var childrenToUse = contentToUse != null ? null : props.children;
       if (contentToUse != null) {
         // TODO: Validate that text is allowed as a child of this node
-        ret = escapeTextContentForBrowser(contentToUse);
+        context.write(escapeTextContentForBrowser(contentToUse));
         if (process.env.NODE_ENV !== 'production') {
           setAndValidateContentChildDev.call(this, contentToUse);
         }
@@ -400,26 +395,7 @@ ReactDOMServerComponent.Mixin = {
           transaction,
           context
         );
-        write = false;
       }
-    }
-    // TODO
-    if (newlineEatingTags[this._tag] && ret.charAt(0) === '\n') {
-      // text/html ignores the first character in these tags if it's a newline
-      // Prefer to break application/xml over text/html (for now) by adding
-      // a newline specifically to get eaten by the parser. (Alternately for
-      // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
-      // \r is normalized out by HTMLTextAreaElement#value.)
-      // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
-      // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
-      // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
-      // See: Parsing of "textarea" "listing" and "pre" elements
-      //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
-      if (write)context.write('\n'+ret);
-      return '\n' + ret;
-    } else {
-      if (ret&&write)context.write(ret);
-      return ret;
     }
   },
 

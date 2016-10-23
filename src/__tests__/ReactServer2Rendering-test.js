@@ -82,6 +82,16 @@ describe('ReactServerRendering', () => {
       ));
     });
 
+    it('should insert extra newline for newline eating tags', () => {
+      var response = ReactServerRendering.renderToString(
+        <pre>{'\nasdf'}</pre>
+      );
+      expect(response.markup).toMatch(new RegExp(
+        '<pre ' + ROOT_ATTRIBUTE_NAME + '="" ' +
+          ID_ATTRIBUTE_NAME + '="[^"]+">\n\nasdf</pre>'
+      ));
+    });
+
     it('should generate comment markup for component returns null', () => {
       class NullComponent extends React.Component {
         render() {
