@@ -16,7 +16,6 @@ var RenderContext = require('./context');
 
 var React = require('react');
 var ReactDOMContainerInfo = require('react-dom/lib/ReactDOMContainerInfo');
-var ReactInstrumentation = require('react-dom/lib/ReactInstrumentation');
 var ReactReconciler = require('react-dom/lib/ReactReconciler');
 var ReactServerBatchingStrategy = require('react-dom/lib/ReactServerBatchingStrategy');
 var ReactServerRenderingTransaction = require('react-dom/lib/ReactServerRenderingTransaction');
@@ -46,11 +45,6 @@ function renderToStringImpl(element, makeStaticMarkup) {
         context,
         0 /* parentDebugID */
       );
-      if (process.env.NODE_ENV !== 'production') {
-        ReactInstrumentation.debugTool.onUnmountComponent(
-          componentInstance._debugID
-        );
-      }
       markup = context.flush();
       if (!makeStaticMarkup) {
         markup = ReactMarkupChecksum.addChecksumToMarkup(markup);

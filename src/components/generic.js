@@ -22,10 +22,8 @@ var ReactDOMInput = require('react-dom/lib/ReactDOMInput');
 var ReactDOMOption = require('react-dom/lib/ReactDOMOption');
 var ReactDOMSelect = require('react-dom/lib/ReactDOMSelect');
 var ReactDOMTextarea = require('react-dom/lib/ReactDOMTextarea');
-var ReactInstrumentation = require('react-dom/lib/ReactInstrumentation');
 var ReactMultiChild = require('./children');
 
-var emptyFunction = require('fbjs/lib/emptyFunction');
 var escapeTextContentForBrowser = require('react-dom/lib/escapeTextContentForBrowser');
 var invariant = require('fbjs/lib/invariant');
 var validateDOMNesting = require('react-dom/lib/validateDOMNesting');
@@ -124,35 +122,6 @@ function assertValidProps(component, props) {
   );
 }
 
-var setAndValidateContentChildDev = emptyFunction;
-if (process.env.NODE_ENV !== 'production') {
-  setAndValidateContentChildDev = function(content) {
-    var hasExistingContent = this._contentDebugID != null;
-    var debugID = this._debugID;
-    // This ID represents the inlined child that has no backing instance:
-    var contentDebugID = -debugID;
-
-    if (content == null) {
-      if (hasExistingContent) {
-        ReactInstrumentation.debugTool.onUnmountComponent(this._contentDebugID);
-      }
-      this._contentDebugID = null;
-      return;
-    }
-
-    validateDOMNesting(null, String(content), this, this._ancestorInfo);
-    this._contentDebugID = contentDebugID;
-    if (hasExistingContent) {
-      ReactInstrumentation.debugTool.onBeforeUpdateComponent(contentDebugID, content);
-      ReactInstrumentation.debugTool.onUpdateComponent(contentDebugID);
-    } else {
-      ReactInstrumentation.debugTool.onBeforeMountComponent(contentDebugID, content, debugID);
-      ReactInstrumentation.debugTool.onMountComponent(contentDebugID);
-      ReactInstrumentation.debugTool.onSetChildren(debugID, [contentDebugID]);
-    }
-  };
-}
-
 // For HTML, certain tags should omit their close tag. We keep a whitelist for
 // those special-case tags.
 
@@ -233,7 +202,6 @@ function ReactDOMServerComponent(element) {
   this._wrapperState = null;
   if (process.env.NODE_ENV !== 'production') {
     this._ancestorInfo = null;
-    setAndValidateContentChildDev.call(this, null);
   }
 }
 
@@ -386,7 +354,7 @@ ReactDOMServerComponent.Mixin = {
         // TODO: Validate that text is allowed as a child of this node
         context.write(escapeTextContentForBrowser(contentToUse));
         if (process.env.NODE_ENV !== 'production') {
-          setAndValidateContentChildDev.call(this, contentToUse);
+          validateDOMNesting(null, String(contentToUse), this, this._ancestorInfo);
         }
       } else if (childrenToUse != null) {
         this.mountChildren(
