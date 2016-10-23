@@ -23,7 +23,7 @@ var ReactDOMOption = require('react-dom/lib/ReactDOMOption');
 var ReactDOMSelect = require('react-dom/lib/ReactDOMSelect');
 var ReactDOMTextarea = require('react-dom/lib/ReactDOMTextarea');
 var ReactInstrumentation = require('react-dom/lib/ReactInstrumentation');
-var ReactMultiChild = require('react-dom/lib/ReactMultiChild');
+var ReactMultiChild = require('./children');
 
 var emptyFunction = require('fbjs/lib/emptyFunction');
 var escapeTextContentForBrowser = require('react-dom/lib/escapeTextContentForBrowser');
@@ -227,7 +227,6 @@ function ReactDOMServerComponent(element) {
   this._currentElement = element;
   this._tag = tag.toLowerCase();
   this._namespaceURI = null;
-  this._renderedChildren = null;
   this._hostParent = null;
   this._domID = 0;
   this._hostContainerInfo = null;
