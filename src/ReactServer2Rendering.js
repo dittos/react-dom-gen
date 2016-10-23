@@ -55,7 +55,7 @@ function renderToStringImpl(element, makeStaticMarkup) {
           componentInstance._debugID
         );
       }
-      markup = transaction.serverBuffer.flush();
+      markup = transaction.flush();
       if (!makeStaticMarkup) {
         markup = ReactMarkupChecksum.addChecksumToMarkup(markup);
       }

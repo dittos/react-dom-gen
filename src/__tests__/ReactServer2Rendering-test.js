@@ -72,6 +72,16 @@ describe('ReactServerRendering', () => {
       ));
     });
 
+    it('should generate markup for wrapper components', () => {
+      var response = ReactServerRendering.renderToString(
+        <input />
+      );
+      expect(response.markup).toMatch(new RegExp(
+        '<input ' + ROOT_ATTRIBUTE_NAME + '="" ' +
+          ID_ATTRIBUTE_NAME + '="[^"]+"/>'
+      ));
+    });
+
     it('should generate comment markup for component returns null', () => {
       class NullComponent extends React.Component {
         render() {

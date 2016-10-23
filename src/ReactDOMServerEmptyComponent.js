@@ -11,18 +11,9 @@
 
 'use strict';
 
-var DOMLazyTree = require('react-dom/lib/DOMLazyTree');
-var ReactDOMComponentTree = require('react-dom/lib/ReactDOMComponentTree');
-
-
 var ReactDOMEmptyComponent = function(instantiate) {
   // ReactCompositeComponent uses this:
   this._currentElement = null;
-  // ReactDOMComponentTree uses these:
-  this._hostNode = null;
-  this._hostParent = null;
-  this._hostContainerInfo = null;
-  this._domID = 0;
 };
 Object.assign(ReactDOMEmptyComponent.prototype, {
   mountComponent: function(
@@ -31,35 +22,21 @@ Object.assign(ReactDOMEmptyComponent.prototype, {
     hostContainerInfo,
     context
   ) {
-    var domID = hostContainerInfo._idCounter++;
-    this._domID = domID;
-    this._hostParent = hostParent;
-    this._hostContainerInfo = hostContainerInfo;
+    const domID = hostContainerInfo._idCounter++;
 
-    var nodeValue = ' react-empty: ' + this._domID + ' ';
-    if (transaction.useCreateElement) {
-      var ownerDocument = hostContainerInfo._ownerDocument;
-      var node = ownerDocument.createComment(nodeValue);
-      ReactDOMComponentTree.precacheNode(this, node);
-      return DOMLazyTree(node);
-    } else {
-      if (transaction.renderToStaticMarkup) {
-        // Normally we'd insert a comment node, but since this is a situation
-        // where React won't take over (static pages), we can simply return
-        // nothing.
-        return '';
-      }
-      transaction.serverBuffer.write('<!--' + nodeValue + '-->');
-      return '<!--' + nodeValue + '-->';
+    var nodeValue = ' react-empty: ' + domID + ' ';
+    if (!transaction.renderToStaticMarkup) {
+      transaction.write('<!--' + nodeValue + '-->');
     }
   },
   receiveComponent: function() {
+    throw new Error('unsupported operation');
   },
   getHostNode: function() {
-    return ReactDOMComponentTree.getNodeFromInstance(this);
+    throw new Error('unsupported operation');
   },
   unmountComponent: function() {
-    ReactDOMComponentTree.uncacheNode(this);
+    throw new Error('unsupported operation');
   },
 });
 

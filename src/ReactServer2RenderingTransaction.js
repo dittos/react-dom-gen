@@ -44,28 +44,13 @@ function ReactServer2RenderingTransaction(renderToStaticMarkup) {
   this.renderToStaticMarkup = renderToStaticMarkup;
   this.useCreateElement = false;
   this.updateQueue = new ReactServerUpdateQueue(this);
+  this.buffer = [];
+  this.nextWriteHeader = null;
+  this.position = 0;
   var buf = [];
   var nextWriteHeader = null;
   this.serverBuffer = {
     position: 0,
-    enqueueNextWriteHeader(header) {
-      nextWriteHeader = header;
-    },
-    resetNextWriteHeader() {
-      nextWriteHeader = null;
-    },
-    write(chunk) {
-      if (nextWriteHeader) {
-        buf.push(nextWriteHeader);
-        this.position += nextWriteHeader;
-        nextWriteHeader = null;
-      }
-      buf.push(chunk);
-      this.position += chunk.length;
-    },
-    flush() {
-      return buf.join('');
-    }
   };
 }
 
@@ -106,6 +91,28 @@ var Mixin = {
 
   rollback: function() {
   },
+
+  enqueueNextWriteHeader(header) {
+    this.nextWriteHeader = header;
+  },
+
+  resetNextWriteHeader() {
+    this.nextWriteHeader = null;
+  },
+
+  write(chunk) {
+    if (this.nextWriteHeader) {
+      this.buffer.push(this.nextWriteHeader);
+      this.position += this.nextWriteHeader.length;
+      this.resetNextWriteHeader();
+    }
+    this.buffer.push(chunk);
+    this.position += chunk.length;
+  },
+
+  flush() {
+    return this.buffer.join('');
+  }
 };
 
 
