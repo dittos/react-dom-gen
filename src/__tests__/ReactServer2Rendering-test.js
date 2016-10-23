@@ -92,6 +92,18 @@ describe('ReactServerRendering', () => {
       ));
     });
 
+    it('should generate markup for multiple children', () => {
+      var response = ReactServerRendering.renderToString(
+        <div><span /><span /></div>
+      );
+      expect(response.markup).toMatch(new RegExp(
+        '<div ' + ROOT_ATTRIBUTE_NAME + '="" ' +
+          ID_ATTRIBUTE_NAME + '="[^"]+">' +
+          '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span>' +
+          '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span></div>'
+      ));
+    });
+
     it('should generate comment markup for component returns null', () => {
       class NullComponent extends React.Component {
         render() {

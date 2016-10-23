@@ -209,7 +209,7 @@ ReactDOMServerComponent.displayName = 'ReactDOMComponent';
 
 ReactDOMServerComponent.Mixin = {
 
-  mountComponent: function(
+  mountComponent: function*(
     transaction,
     hostParent,
     hostContainerInfo,
@@ -283,16 +283,57 @@ ReactDOMServerComponent.Mixin = {
     }
 
     var tagOpen = this._createOpenTagMarkup(transaction, props);
-    const tagContext = context.writeIncompleteOpenTag(
-      tagOpen,
-      newlineEatingTags[this._tag]
-    );
-    this._createContentMarkup(transaction, props, context);
-    context.completeTag(
-      this._currentElement.type,
-      omittedCloseTags[this._tag],
-      tagContext
-    );
+    const children = this._createContentMarkup(transaction, props, context);
+    if (!children || !children.next) {
+      var tagContent = children || '';
+      if (!tagContent && omittedCloseTags[this._tag]) {
+        yield tagOpen + '/>';
+      } else {
+        if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
+          // text/html ignores the first character in these tags if it's a newline
+          // Prefer to break application/xml over text/html (for now) by adding
+          // a newline specifically to get eaten by the parser. (Alternately for
+          // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
+          // \r is normalized out by HTMLTextAreaElement#value.)
+          // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
+          // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
+          // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
+          // See: Parsing of "textarea" "listing" and "pre" elements
+          //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
+          tagContent = '\n' + tagContent;
+        }
+        yield tagOpen + '>' + tagContent + '</' + this._currentElement.type + '>';
+      }
+    } else {
+      // Accumulate until first byte
+      var tagContent = '';
+      while (tagContent.length === 0) {
+        const {value, done} = children.next();
+        if (done) break;
+        tagContent += value;
+      }
+
+      if (!tagContent && omittedCloseTags[this._tag]) {
+        yield tagOpen + '/>';
+      } else {
+        if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
+          // text/html ignores the first character in these tags if it's a newline
+          // Prefer to break application/xml over text/html (for now) by adding
+          // a newline specifically to get eaten by the parser. (Alternately for
+          // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
+          // \r is normalized out by HTMLTextAreaElement#value.)
+          // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
+          // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
+          // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
+          // See: Parsing of "textarea" "listing" and "pre" elements
+          //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
+          tagContent = '\n' + tagContent;
+        }
+        yield tagOpen + '>' + tagContent;
+        yield* children;
+        yield '</' + this._currentElement.type + '>';
+      }
+    }
   },
 
   _createOpenTagMarkup: function(transaction, props) {
@@ -344,7 +385,7 @@ ReactDOMServerComponent.Mixin = {
     var innerHTML = props.dangerouslySetInnerHTML;
     if (innerHTML != null) {
       if (innerHTML.__html != null) {
-        context.write(innerHTML.__html);
+        return innerHTML.__html;
       }
     } else {
       var contentToUse =
@@ -352,12 +393,12 @@ ReactDOMServerComponent.Mixin = {
       var childrenToUse = contentToUse != null ? null : props.children;
       if (contentToUse != null) {
         // TODO: Validate that text is allowed as a child of this node
-        context.write(escapeTextContentForBrowser(contentToUse));
         if (process.env.NODE_ENV !== 'production') {
           validateDOMNesting(null, String(contentToUse), this, this._ancestorInfo);
         }
+        return escapeTextContentForBrowser(contentToUse);
       } else if (childrenToUse != null) {
-        this.mountChildren(
+        return this.mountChildren(
           childrenToUse,
           transaction,
           context

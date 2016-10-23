@@ -12,7 +12,6 @@
 
 require('./injection').inject();
 var ReactMarkupChecksum = require('./checksum');
-var RenderContext = require('./context');
 
 var React = require('react');
 var ReactDOMContainerInfo = require('react-dom/lib/ReactDOMContainerInfo');
@@ -34,23 +33,33 @@ function renderToStringImpl(element, makeStaticMarkup) {
   try {
     transaction = ReactServerRenderingTransaction.getPooled(makeStaticMarkup);
 
-    return transaction.perform(function() {
-      var context = new RenderContext();
-      var componentInstance = instantiateReactComponent(element, true);
-      var markup = ReactReconciler.mountComponent(
+    const mountImage = transaction.perform(function() {
+      const componentInstance = instantiateReactComponent(element, true);
+      return ReactReconciler.mountComponent(
         componentInstance,
         transaction,
         null,
         ReactDOMContainerInfo(),
-        context,
+        undefined,
         0 /* parentDebugID */
       );
-      markup = context.flush();
-      if (!makeStaticMarkup) {
-        markup = ReactMarkupChecksum.addChecksumToMarkup(markup);
-      }
-      return markup;
     }, null);
+    var markup = '';
+    if (mountImage) {
+      if (mountImage.next) {
+        while (true) {
+          const {value, done} = transaction.perform(() => mountImage.next());
+          if (done) break;
+          markup += value;
+        }
+      } else {
+        markup = mountImage;
+      }
+    }
+    if (!makeStaticMarkup) {
+      markup = ReactMarkupChecksum.addChecksumToMarkup(markup);
+    }
+    return markup;
   } finally {
     ReactServerRenderingTransaction.release(transaction);
   }

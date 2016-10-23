@@ -53,19 +53,22 @@ var ReactMultiChild = {
      * @return {array} An array of mounted representations.
      * @internal
      */
-    mountChildren: function (nestedChildren, transaction, context) {
+    mountChildren: function*(nestedChildren, transaction, context) {
       var children = this._reconcilerInstantiateChildren(nestedChildren, transaction, context);
 
-      var mountImages = [];
       for (var name in children) {
         if (children.hasOwnProperty(name)) {
           var child = children[name];
-          var mountImage = ReactReconciler.mountComponent(child, transaction, this, this._hostContainerInfo, context, 0);
-          mountImages.push(mountImage);
+          const mountImage = ReactReconciler.mountComponent(child, transaction, this, this._hostContainerInfo, context, 0);
+          if (mountImage) {
+            if (mountImage.next) {
+              yield *mountImage;
+            } else {
+              yield mountImage;
+            }
+          }
         }
       }
-
-      return mountImages;
     },
 
   }
