@@ -318,13 +318,13 @@ ReactDOMServerComponent.Mixin = {
     var tagOpen = this._createOpenTagMarkup(transaction, props);
     const tagContext = context.writeIncompleteOpenTag(
       tagOpen,
-      newlineEatingTags[this._tag],
+      newlineEatingTags[this._tag]
     );
     this._createContentMarkup(transaction, props, context);
     context.completeTag(
       this._currentElement.type,
       omittedCloseTags[this._tag],
-      tagContext,
+      tagContext
     );
   },
 
