@@ -1,6 +1,6 @@
 {
-  "name": "prgrsv",
-  "version": "1.0.0",
+  "name": "react-dom-gen",
+  "version": "15.4.0-rc.3",
   "description": "",
   "main": "index.js",
   "scripts": {
