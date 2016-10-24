@@ -1,4 +1,13 @@
 var React = require('react');
-var ReactDOMServer2 = require('./src');
+var prgrsv = require('./src');
 
-console.log(ReactDOMServer2.renderToString(React.createElement('div', {style: {fontSize: 13}})));
+function C() {
+	return null;
+}
+
+const el = React.createElement('div', {style: {fontSize: 13}}, 'a', React.createElement(C), 'b');
+const stream = prgrsv.createRenderStream(el);
+
+stream.on('end', () => {
+	console.log('\nchecksum: ' + stream.checksum);
+}).pipe(process.stdout);

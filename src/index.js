@@ -11,87 +11,94 @@
 'use strict';
 
 require('./injection').inject();
-var ReactMarkupChecksum = require('./checksum');
+var checksum = require('./checksum');
 
 var React = require('react');
 var ReactDOMContainerInfo = require('react-dom/lib/ReactDOMContainerInfo');
 var ReactReconciler = require('react-dom/lib/ReactReconciler');
-var ReactServerBatchingStrategy = require('react-dom/lib/ReactServerBatchingStrategy');
 var ReactServerRenderingTransaction = require('react-dom/lib/ReactServerRenderingTransaction');
-var ReactUpdates = require('react-dom/lib/ReactUpdates');
 
 var emptyObject = require('fbjs/lib/emptyObject');
 var instantiateReactComponent = require('react-dom/lib/instantiateReactComponent');
 var invariant = require('fbjs/lib/invariant');
+var stream = require('stream');
 
-/**
- * @param {ReactElement} element
- * @return {string} the HTML markup
- */
-function renderToStringImpl(element, makeStaticMarkup) {
-  var transaction;
-  try {
-    transaction = ReactServerRenderingTransaction.getPooled(makeStaticMarkup);
-
-    const mountImage = transaction.perform(function() {
+class ReactReadable extends stream.Readable {
+  constructor(element, makeStaticMarkup) {
+    super();
+    this.transaction = new ReactServerRenderingTransaction(makeStaticMarkup);
+    this.mountImage = this.transaction.perform(function() {
       const componentInstance = instantiateReactComponent(element, true);
       return ReactReconciler.mountComponent(
         componentInstance,
-        transaction,
+        this.transaction,
         null,
         ReactDOMContainerInfo(),
-        undefined,
+        emptyObject,
         0 /* parentDebugID */
       );
-    }, null);
-    var markup = '';
-    if (mountImage) {
-      if (mountImage.next) {
-        while (true) {
-          const {value, done} = transaction.perform(() => mountImage.next());
-          if (done) break;
-          markup += value;
+    }, this);
+  }
+
+  _read(size) {
+    if (!this.mountImage) {
+      // empty, end of stream
+      this.push(null);
+    } else if (!this.mountImage.next) {
+      // single string, end of stream
+      this.checksum = checksum(this.mountImage, this.checksum);
+      this.push(this.mountImage);
+      this.push(null);
+    } else {
+      while (true) {
+        const {value, done} = this.transaction.perform(() => this.mountImage.next());
+        if (done) {
+          this.push(null);
+          break;
         }
-      } else {
-        markup = mountImage;
+        this.checksum = checksum(value, this.checksum);
+        if (!this.push(value)) {
+          // should stop push
+          break;
+        }
       }
     }
-    if (!makeStaticMarkup) {
-      markup = ReactMarkupChecksum.addChecksumToMarkup(markup);
-    }
-    return markup;
-  } finally {
-    ReactServerRenderingTransaction.release(transaction);
   }
 }
 
-/**
- * Render a ReactElement to its initial HTML. This should only be used on the
- * server.
- * See https://facebook.github.io/react/docs/top-level-api.html#reactdomserver.rendertostring
- */
-function renderToString(element) {
-  invariant(
-    React.isValidElement(element),
-    'renderToString(): You must pass a valid ReactElement.'
-  );
-  return renderToStringImpl(element, false);
+function readAll(stream) {
+  var buf = '';
+  var chunk;
+  while (null !== (chunk = stream.read())) {
+    buf += chunk;
+  }
+  return buf;
 }
 
-/**
- * Similar to renderToString, except this doesn't create extra DOM attributes
- * such as data-react-id that React uses internally.
- * See https://facebook.github.io/react/docs/top-level-api.html#reactdomserver.rendertostaticmarkup
- */
+function renderToString(element) {
+  if (!React.isValidElement(element)) {
+    if (process.env.NODE_ENV !== 'production')
+      invariant(false, 'renderToString(): You must pass a valid ReactElement.');
+  }
+  const stream = new ReactReadable(element, false);
+  const markup = readAll(stream);
+  return {
+    markup,
+    checksum: stream.checksum,
+  };
+}
+
 function renderToStaticMarkup(element) {
-  invariant(
-    React.isValidElement(element),
-    'renderToStaticMarkup(): You must pass a valid ReactElement.'
-  );
-  return renderToStringImpl(element, true);
+  if (!React.isValidElement(element)) {
+    if (process.env.NODE_ENV !== 'production')
+      invariant(false, 'renderToStaticMarkup(): You must pass a valid ReactElement.');
+  }
+  const stream = new ReactReadable(element, true);
+  return readAll(stream);
 }
 
 module.exports = {
+  createRenderStream: element => new ReactReadable(element, false),
   renderToString: renderToString,
   renderToStaticMarkup: renderToStaticMarkup,
 };
