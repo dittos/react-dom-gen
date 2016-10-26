@@ -1,17 +1,16 @@
 {
   "name": "react-dom-gen",
   "version": "15.4.0-rc.3",
-  "description": "",
-  "main": "index.js",
+  "description": "Generator-based React DOM renderer for streamed server-side rendering",
   "scripts": {
     "test": "jest"
   },
   "main": "src/index.js",
-  "author": "",
+  "author": "Taeho Kim <dittos@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "react": "15.4.0-rc.3",
-    "react-dom": "15.4.0-rc.3"
+    "react": "^15.4.0-rc.3",
+    "react-dom": "^15.4.0-rc.3"
   },
   "devDependencies": {
     "babel-jest": "^16.0.0",
