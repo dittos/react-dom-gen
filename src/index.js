@@ -51,7 +51,7 @@ class ReactReadable extends stream.Readable {
       this.push(null);
     } else {
       while (true) {
-        const {value, done} = this.transaction.perform(() => this.mountImage.next());
+        const {value, done} = this.transaction.perform(this.mountImage.next, this.mountImage);
         if (done) {
           this.push(null);
           break;
