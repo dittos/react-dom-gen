@@ -176,6 +176,41 @@ function isCustomComponent(tagName, props) {
   return tagName.indexOf('-') >= 0 || props.is != null;
 }
 
+const STATE_HEAD = 0;
+const STATE_BODY = 1;
+const STATE_DONE = 2;
+
+class ChildrenIterator {
+  constructor(head, body, tail) {
+    this.state = STATE_HEAD;
+    this.head = head;
+    this.body = body;
+    this.tail = tail;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    switch (this.state) {
+      case STATE_HEAD:
+        this.state = STATE_BODY;
+        return {value: this.head, done: false};
+      case STATE_BODY: {
+        var g = this.body.next();
+        if (g.done) {
+          this.state = STATE_DONE;
+          return {value: this.tail, done: false};
+        }
+        return {value: g.value, done: false};
+      }
+      case STATE_DONE:
+        return {value: undefined, done: true};
+    }
+  }
+}
+
 /**
  * Creates a new React class that is idempotent and capable of containing other
  * React components. It accepts event listeners and DOM properties that are
@@ -209,7 +244,7 @@ ReactDOMServerComponent.displayName = 'ReactDOMComponent';
 
 ReactDOMServerComponent.Mixin = {
 
-  mountComponent: function*(
+  mountComponent: function(
     transaction,
     hostParent,
     hostContainerInfo,
@@ -281,13 +316,13 @@ ReactDOMServerComponent.Mixin = {
       this._ancestorInfo =
         validateDOMNesting.updatedAncestorInfo(parentInfo, this._tag, this);
     }
-
-    var tagOpen = this._createOpenTagMarkup(transaction, props);
+    const tagOpen = this._createOpenTagMarkup(transaction, props);
     const children = this._createContentMarkup(transaction, props, context);
+    var tagContent;
     if (!children || !children.next) {
-      var tagContent = children || '';
+      tagContent = children || '';
       if (!tagContent && omittedCloseTags[this._tag]) {
-        yield tagOpen + '/>';
+        return tagOpen + '/>';
       } else {
         if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
           // text/html ignores the first character in these tags if it's a newline
@@ -302,38 +337,39 @@ ReactDOMServerComponent.Mixin = {
           //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
           tagContent = '\n' + tagContent;
         }
-        yield tagOpen + '>' + tagContent + '</' + this._currentElement.type + '>';
-      }
-    } else {
-      // Accumulate until first byte
-      var tagContent = '';
-      while (tagContent.length === 0) {
-        const {value, done} = children.next();
-        if (done) break;
-        tagContent += value;
-      }
-
-      if (!tagContent && omittedCloseTags[this._tag]) {
-        yield tagOpen + '/>';
-      } else {
-        if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
-          // text/html ignores the first character in these tags if it's a newline
-          // Prefer to break application/xml over text/html (for now) by adding
-          // a newline specifically to get eaten by the parser. (Alternately for
-          // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
-          // \r is normalized out by HTMLTextAreaElement#value.)
-          // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
-          // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
-          // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
-          // See: Parsing of "textarea" "listing" and "pre" elements
-          //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
-          tagContent = '\n' + tagContent;
-        }
-        yield tagOpen + '>' + tagContent;
-        yield* children;
-        yield '</' + this._currentElement.type + '>';
+        return tagOpen + '>' + tagContent + '</' + this._currentElement.type + '>';
       }
     }
+
+    // Accumulate until first byte
+    tagContent = '';
+    while (tagContent.length === 0) {
+      const {value, done} = children.next();
+      if (done) break;
+      tagContent += value;
+    }
+
+    if (!tagContent && omittedCloseTags[this._tag]) {
+      return tagOpen + '/>';
+    }
+    if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
+      // text/html ignores the first character in these tags if it's a newline
+      // Prefer to break application/xml over text/html (for now) by adding
+      // a newline specifically to get eaten by the parser. (Alternately for
+      // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
+      // \r is normalized out by HTMLTextAreaElement#value.)
+      // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
+      // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
+      // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
+      // See: Parsing of "textarea" "listing" and "pre" elements
+      //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
+      tagContent = '\n' + tagContent;
+    }
+    return new ChildrenIterator(
+      tagOpen + '>' + tagContent,
+      children,
+      '</' + this._currentElement.type + '>'
+    );
   },
 
   _createOpenTagMarkup: function(transaction, props) {
