@@ -318,58 +318,52 @@ ReactDOMServerComponent.Mixin = {
     }
     const tagOpen = this._createOpenTagMarkup(transaction, props);
     const children = this._createContentMarkup(transaction, props, context);
-    var tagContent;
-    if (!children || !children.next) {
-      tagContent = children || '';
-      if (!tagContent && omittedCloseTags[this._tag]) {
-        return tagOpen + '/>';
-      } else {
-        if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
-          // text/html ignores the first character in these tags if it's a newline
-          // Prefer to break application/xml over text/html (for now) by adding
-          // a newline specifically to get eaten by the parser. (Alternately for
-          // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
-          // \r is normalized out by HTMLTextAreaElement#value.)
-          // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
-          // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
-          // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
-          // See: Parsing of "textarea" "listing" and "pre" elements
-          //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
-          tagContent = '\n' + tagContent;
+    var tagContent = '';
+    var isGenerator;
+    if (children) {
+      if (children.next) {
+        isGenerator = true;
+        // Exhaust until first byte
+        while (tagContent.length === 0) {
+          const {value, done} = children.next();
+          if (done) {
+            isGenerator = false;
+            break;
+          }
+          tagContent = value;
         }
-        return tagOpen + '>' + tagContent + '</' + this._currentElement.type + '>';
+      } else {
+        isGenerator = false;
+        tagContent = children;
       }
-    }
-
-    // Accumulate until first byte
-    tagContent = '';
-    while (tagContent.length === 0) {
-      const {value, done} = children.next();
-      if (done) break;
-      tagContent += value;
     }
 
     if (!tagContent && omittedCloseTags[this._tag]) {
       return tagOpen + '/>';
+    } else {
+      if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
+        // text/html ignores the first character in these tags if it's a newline
+        // Prefer to break application/xml over text/html (for now) by adding
+        // a newline specifically to get eaten by the parser. (Alternately for
+        // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
+        // \r is normalized out by HTMLTextAreaElement#value.)
+        // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
+        // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
+        // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
+        // See: Parsing of "textarea" "listing" and "pre" elements
+        //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
+        tagContent = '\n' + tagContent;
+      }
     }
-    if (newlineEatingTags[this._tag] && tagContent.charAt(0) === '\n') {
-      // text/html ignores the first character in these tags if it's a newline
-      // Prefer to break application/xml over text/html (for now) by adding
-      // a newline specifically to get eaten by the parser. (Alternately for
-      // textareas, replacing "^\n" with "\r\n" doesn't get eaten, and the first
-      // \r is normalized out by HTMLTextAreaElement#value.)
-      // See: <http://www.w3.org/TR/html-polyglot/#newlines-in-textarea-and-pre>
-      // See: <http://www.w3.org/TR/html5/syntax.html#element-restrictions>
-      // See: <http://www.w3.org/TR/html5/syntax.html#newlines>
-      // See: Parsing of "textarea" "listing" and "pre" elements
-      //  from <http://www.w3.org/TR/html5/syntax.html#parsing-main-inbody>
-      tagContent = '\n' + tagContent;
-    }
-    return new ChildrenIterator(
-      tagOpen + '>' + tagContent,
-      children,
-      '</' + this._currentElement.type + '>'
-    );
+
+    if (isGenerator)
+      return new ChildrenIterator(
+        tagOpen + '>' + tagContent,
+        children,
+        '</' + this._currentElement.type + '>'
+      );
+    else
+      return tagOpen + '>' + tagContent + '</' + this._currentElement.type + '>';
   },
 
   _createOpenTagMarkup: function(transaction, props) {
