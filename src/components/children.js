@@ -11,8 +11,10 @@
 'use strict';
 
 var ReactCurrentOwner = require('react/lib/ReactCurrentOwner');
+var ReactElement = require('react/lib/ReactElement');
 var ReactReconciler = require('react-dom/lib/ReactReconciler');
 var ReactChildReconciler = require('react-dom/lib/ReactChildReconciler');
+var instantiateReactComponent = require('react-dom/lib/instantiateReactComponent');
 
 /**
  * ReactMultiChild are capable of reconciling multiple children.
@@ -53,9 +55,18 @@ var ReactMultiChild = {
      * @return {array} An array of mounted representations.
      * @internal
      */
-    mountChildren: function*(nestedChildren, transaction, context) {
-      var children = this._reconcilerInstantiateChildren(nestedChildren, transaction, context);
+    mountChildren: function(nestedChildren, transaction, context) {
+      if (ReactElement.isValidElement(nestedChildren)) {
+        // single child
+        const child = instantiateReactComponent(nestedChildren);
+        return ReactReconciler.mountComponent(child, transaction, this, this._hostContainerInfo, context, 0);
+      }
 
+      const children = this._reconcilerInstantiateChildren(nestedChildren, transaction, context);
+      return this._mountChildren(children, transaction, context);
+    },
+
+    _mountChildren: function*(children, transaction, context) {
       for (var name in children) {
         if (children.hasOwnProperty(name)) {
           var child = children[name];
