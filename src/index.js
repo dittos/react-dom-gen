@@ -23,9 +23,8 @@ var instantiateReactComponent = require('react-dom/lib/instantiateReactComponent
 var invariant = require('fbjs/lib/invariant');
 var stream = require('stream');
 
-class ReactReadable extends stream.Readable {
+class ReactIterator {
   constructor(element, makeStaticMarkup) {
-    super();
     this.transaction = new ReactServerRenderingTransaction(makeStaticMarkup);
     this.mountImage = this.transaction.perform(function() {
       const componentInstance = instantiateReactComponent(element, true);
@@ -38,41 +37,62 @@ class ReactReadable extends stream.Readable {
         0 /* parentDebugID */
       );
     }, this);
+    this.done = !this.mountImage;
+  }
+
+  next() {
+    if (this.done)
+      return {done: true};
+
+    if (!this.mountImage.next) {
+      // single string, end of stream
+      this.checksum = checksum(this.mountImage, this.checksum);
+      this.done = true;
+      return {value: this.mountImage, done: false};
+    }
+
+    const {value, done} = this.transaction.perform(this.mountImage.next, this.mountImage);
+    if (!done)
+      this.checksum = checksum(value, this.checksum);
+    this.done = done;
+    return {value, done: false};
+  }
+}
+
+class ReactReadable extends stream.Readable {
+  constructor(iterator) {
+    super();
+    this.iterator = iterator;
+  }
+
+  get checksum() {
+    return this.iterator.checksum;
   }
 
   _read(size) {
-    if (!this.mountImage) {
-      // empty, end of stream
-      this.push(null);
-    } else if (!this.mountImage.next) {
-      // single string, end of stream
-      this.checksum = checksum(this.mountImage, this.checksum);
-      this.push(this.mountImage);
-      this.push(null);
-    } else {
-      while (true) {
-        const {value, done} = this.transaction.perform(this.mountImage.next, this.mountImage);
-        if (done) {
-          this.push(null);
-          break;
-        }
-        this.checksum = checksum(value, this.checksum);
-        if (!this.push(value)) {
-          // should stop push
-          break;
-        }
+    while (true) {
+      const {value, done} = this.iterator.next();
+      if (done) {
+        this.push(null);
+        break;
+      }
+      if (!this.push(value)) {
+        // should stop push
+        break;
       }
     }
   }
 }
 
 function readAll(stream) {
-  var buf = '';
-  var chunk;
-  while (null !== (chunk = stream.read())) {
-    buf += chunk;
+  var buf = [];
+  while (true) {
+    const {value, done} = stream.next();
+    if (done)
+      break;
+    buf.push(value);
   }
-  return buf;
+  return buf.join('');
 }
 
 function renderToString(element) {
@@ -80,7 +100,7 @@ function renderToString(element) {
     if (process.env.NODE_ENV !== 'production')
       invariant(false, 'renderToString(): You must pass a valid ReactElement.');
   }
-  const stream = new ReactReadable(element, false);
+  const stream = new ReactIterator(element, false);
   const markup = readAll(stream);
   return {
     markup,
@@ -93,12 +113,12 @@ function renderToStaticMarkup(element) {
     if (process.env.NODE_ENV !== 'production')
       invariant(false, 'renderToStaticMarkup(): You must pass a valid ReactElement.');
   }
-  const stream = new ReactReadable(element, true);
+  const stream = new ReactIterator(element, true);
   return readAll(stream);
 }
 
 module.exports = {
-  createRenderStream: element => new ReactReadable(element, false),
+  createRenderStream: element => new ReactReadable(new ReactIterator(element, false)),
   renderToString: renderToString,
   renderToStaticMarkup: renderToStaticMarkup,
 };
