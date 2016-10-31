@@ -1,3 +1,5 @@
+process.env = Object.assign({}, process.env);
+
 const Benchmark = require('benchmark');
 const React = require('react');
 
