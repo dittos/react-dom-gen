@@ -104,6 +104,22 @@ describe('ReactServerRendering', () => {
       ));
     });
 
+    it('should generate markup for nested multiple children', () => {
+      var response = ReactServerRendering.renderToString(
+        <div><span /><div><span /><span /></div><span /></div>
+      );
+      expect(response.markup).toMatch(new RegExp(
+        '<div ' + ROOT_ATTRIBUTE_NAME + '="" ' +
+          ID_ATTRIBUTE_NAME + '="[^"]+">' +
+          '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span>' +
+          '<div ' + ID_ATTRIBUTE_NAME + '="[^"]+">' +
+            '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span>' +
+            '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span>' +
+          '</div>' +
+          '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span></div>'
+      ));
+    });
+
     it('should generate comment markup for component returns null', () => {
       class NullComponent extends React.Component {
         render() {
@@ -148,6 +164,28 @@ describe('ReactServerRendering', () => {
             '<!-- react-text: [0-9]+ -->My name is <!-- /react-text -->' +
             '<!-- react-text: [0-9]+ -->child<!-- /react-text -->' +
           '</span>' +
+        '</div>'
+      ));
+    });
+
+    it('should render composite components with ref', () => {
+      class Parent extends React.Component {
+        render() {
+          return <div>
+            <span ref="r1" />
+            <span ref="r2" />
+          </div>;
+        }
+      }
+
+      var response = ReactServerRendering.renderToString(
+        <Parent />
+      );
+      expect(response.markup).toMatch(new RegExp(
+        '<div ' + ROOT_ATTRIBUTE_NAME + '="" ' +
+          ID_ATTRIBUTE_NAME + '="[^"]+">' +
+          '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span>' +
+          '<span ' + ID_ATTRIBUTE_NAME + '="[^"]+"></span>' +
         '</div>'
       ));
     });

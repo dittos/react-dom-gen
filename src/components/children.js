@@ -13,8 +13,47 @@
 var ReactCurrentOwner = require('react/lib/ReactCurrentOwner');
 var ReactElement = require('react/lib/ReactElement');
 var ReactReconciler = require('react-dom/lib/ReactReconciler');
-var ReactChildReconciler = require('react-dom/lib/ReactChildReconciler');
+var ReactChildReconciler = require('../child-reconciler');
 var instantiateReactComponent = require('react-dom/lib/instantiateReactComponent');
+
+class ChildrenIterator {
+  constructor(children, transaction, context, componentInstance) {
+    this.children = children;
+    this.transaction = transaction;
+    this.context = context;
+    this.componentInstance = componentInstance;
+    this.index = 0;
+    this.length = children.length;
+    this.current = null;
+  }
+
+  [Symbol.iterator]() {
+    return this;
+  }
+
+  next() {
+    if (this.current) {
+      const g = this.current.next();
+      if (!g.done)
+        return g;
+      this.current = null;
+    }
+    if (this.index < this.length) {
+      const child = instantiateReactComponent(this.children[this.index]);
+      const mountImage = ReactReconciler.mountComponent(child, this.transaction, this.componentInstance, this.componentInstance._hostContainerInfo, this.context, 0);
+      this.index++;
+      if (mountImage && mountImage.next) {
+        this.current = mountImage;
+        return this.next();
+      }
+      return {
+        value: mountImage,
+        done: false,
+      };
+    }
+    return {value: undefined, done: true};
+  }
+}
 
 /**
  * ReactMultiChild are capable of reconciling multiple children.
@@ -63,23 +102,12 @@ var ReactMultiChild = {
       }
 
       const children = this._reconcilerInstantiateChildren(nestedChildren, transaction, context);
-      return this._mountChildren(children, transaction, context);
-    },
-
-    _mountChildren: function*(children, transaction, context) {
-      for (var name in children) {
-        if (children.hasOwnProperty(name)) {
-          var child = children[name];
-          const mountImage = ReactReconciler.mountComponent(child, transaction, this, this._hostContainerInfo, context, 0);
-          if (mountImage) {
-            if (mountImage.next) {
-              yield *mountImage;
-            } else {
-              yield mountImage;
-            }
-          }
-        }
-      }
+      return new ChildrenIterator(
+        children,
+        transaction,
+        context,
+        this
+      );
     },
 
   }
