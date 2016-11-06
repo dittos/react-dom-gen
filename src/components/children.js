@@ -10,8 +10,7 @@
 
 'use strict';
 
-var ReactCurrentOwner = require('react/lib/ReactCurrentOwner');
-var ReactElement = require('react/lib/ReactElement');
+var React = require('react');
 var ReactReconciler = require('react-dom/lib/ReactReconciler');
 var ReactChildReconciler = require('../child-reconciler');
 var instantiateReactComponent = require('react-dom/lib/instantiateReactComponent');
@@ -73,16 +72,6 @@ var ReactMultiChild = {
   Mixin: {
 
     _reconcilerInstantiateChildren: function (nestedChildren, transaction, context) {
-      if (process.env.NODE_ENV !== 'production') {
-        if (this._currentElement) {
-          try {
-            ReactCurrentOwner.current = this._currentElement._owner;
-            return ReactChildReconciler.instantiateChildren(nestedChildren, transaction, context, 0);
-          } finally {
-            ReactCurrentOwner.current = null;
-          }
-        }
-      }
       return ReactChildReconciler.instantiateChildren(nestedChildren, transaction, context);
     },
 
@@ -95,7 +84,7 @@ var ReactMultiChild = {
      * @internal
      */
     mountChildren: function(nestedChildren, transaction, context) {
-      if (ReactElement.isValidElement(nestedChildren)) {
+      if (React.isValidElement(nestedChildren)) {
         // single child
         const child = instantiateReactComponent(nestedChildren);
         return ReactReconciler.mountComponent(child, transaction, this, this._hostContainerInfo, context, 0);
