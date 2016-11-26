@@ -1,23 +1,29 @@
 {
   "name": "react-dom-gen",
-  "version": "15.4.0-rc.3",
+  "version": "15.4.1",
   "description": "Generator-based React DOM renderer for streamed server-side rendering",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "bench:micro": "NODE_ENV=production node bench/micro.js",
+    "bench:real": "NODE_ENV=production concurrently \"node bench/real/server-string.js\" \"node bench/real/server-stream.js\" \"node bench/real/server-gen.js\" \"async-node bench/real/run.js\""
   },
   "main": "src/index.js",
   "author": "Taeho Kim <dittos@gmail.com>",
   "license": "MIT",
   "dependencies": {
-    "react": "^15.4.0-rc.3",
-    "react-dom": "^15.4.0-rc.3"
+    "react": "^15.4.1",
+    "react-dom": "^15.4.1"
   },
   "devDependencies": {
+    "async-to-gen": "^1.1.4",
     "babel-jest": "^16.0.0",
     "babel-preset-es2015": "^6.16.0",
     "babel-preset-react": "^6.16.0",
     "babel-preset-stage-2": "^6.17.0",
     "benchmark": "^2.1.1",
-    "jest": "^16.0.2"
+    "concurrently": "^3.1.0",
+    "express": "^4.14.0",
+    "jest": "^16.0.2",
+    "react-dom-stream": "^0.5.1"
   }
 }
